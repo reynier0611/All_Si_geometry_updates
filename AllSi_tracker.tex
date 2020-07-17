@@ -108,6 +108,19 @@ Fig.~\ref{fig:beampipe} shows a diagram for the beampipe.
 \end{figure}
 
 % ========================================
+\subsection{Mimosa Chips}
+\label{sec:mimosa}
+
+Mimosa chips are the building blocks for the barrel and disks.
+The chips are defined with a width of 15 mm and a height of 30 mm in:
+
+\begin{tcolorbox}
+\begin{verbnobox}
+Home/eicroot/geometry/MAPS/maps-lib.C
+\end{verbnobox}  
+\end{tcolorbox}
+
+% ========================================
 \subsection{Barrel}
 
 The barrel details are in:
@@ -177,16 +190,8 @@ This is a simplified diagram, as the barrel layers and disks are not smooth. The
 \label{fig:geom}
 \end{figure}
 
-Here, a ``chip'' refers to a Mimosa chip assembly, and is the basic building block for the detector.
-The chip characteristics are defined in:
-
-\begin{tcolorbox}
-\begin{verbnobox}[\scriptsize]
-Home/eicroot/geometry/MAPS/maps-lib.C
-\end{verbnobox}  
-\end{tcolorbox}
-
-The chips are defined with a width of 15 mm and a length (in z) of 30 mm. Consequently, the length of the barrel layers in z is given by
+Here, a ``chip'' refers to a Mimosa chip assembly (see section~\ref{sec:mimosa}).
+The length of the barrel layers in z is given by
 the number of chips per stave and corresponds to \verb|(# chips)|$\times$\verb|(chip length)|.
 
 % ========================================
@@ -208,7 +213,7 @@ At the top of this code we define the number of disks we will have in each z dir
 \end{verbnobox}  
 \end{tcolorbox}
 
-Then, the positions in z and radii of these disks are determined as follows:
+Then, the positions in z and rotation angle in the $x-y$ plane of these disks are determined as follows:
 
 \begin{tcolorbox}
 \begin{verbnobox}[\scriptsize]
@@ -228,15 +233,15 @@ and in Fig.~\ref{fig:geom} b).
 \centering
 \caption{Disk characteristics (in the forward direction). To get backward disks multiply the z-position column by -1.}
 \label{tab:disks}
-\begin{tabular}{c|cc}
+\begin{tabular}{c|ccc}
 \hline
-Disk number & z position {[}cm{]} & outer radius {[}cm{]} \\
+Disk number 	& z position (``Z'') {[}cm{]} 	& axis rotation (``R'') {[}deg{]}	& outer radius {[}cm{]} \\
 \hline \hline
-1           & 25                  & 18.5                  \\
-2           & 49                  & 36.26                 \\
-3           & 73                  & 43.23                 \\
-4           & 97                  & 43.23                 \\
-5           & 121                 & 43.23                
+1           		& 25                  	&	0				& 18.5                  \\
+2           		& 49                  	&	45				& 36.26                 \\
+3           		& 73                  	&	0				& 43.23                 \\
+4           		& 97                  	&	45				& 43.23                 \\
+5           		& 121                	&	0				& 43.23                
 \end{tabular}
 \end{table}
 
@@ -249,7 +254,11 @@ for(unsigned dc=0; dc<_DISK_NUM_; dc++) {
     fbst->AddDisc(disc, (fb ? -1.0 : 1.0)*Z[dc], R[dc]);
 }
 \end{verbnobox}  
-\end{tcolorbox}    
+\end{tcolorbox}
+
+In the first line inside the \verb|for| loop, the parameters passed to create the \verb|FstDisc| disk objects correspond to:
+the object that will be used as a building block (\verb|ibcell|), the inner radius of the disk, the outer radius of the disk, and the
+distance between the chips.
 
 % ========================================
 \subsection{Support structure}
@@ -342,32 +351,15 @@ Run the following root macro to compile the geometry:
 \end{verbnobox}  
 \end{tcolorbox}
 
+Make sure the lines \verb|AddModule| point to the correct versions of the detector pieces.
+This will produce two main outputs. The first one is a root file named \verb|genfitGeom.root|, which is the one that
+will be copied into Fun4All. The second one is named \verb|simulation-uds.root| and will be used in the next
+section to visualize the geometry in EICroot.
+
 % ========================================================================================
 \section{Visualizing the geometry}
 
-\begin{tcolorbox}
-\begin{verbnobox}[\scriptsize]
-{
-        // Load basic libraries;
-        gROOT->Macro("$VMCWORKDIR/gconfig/rootlogon.C");
-
-        // Create simulation run manager; use GEANT3 for tracking excercises here;
-        EicRunSim *fRun = new EicRunSim("TGeant3");
-        fRun->SetOutputFile("simulation-uds.root");
-
-        // Vertex tracker;
-        fRun->AddModule(new EicMaps   ("VST", "/home/eic/eicroot/geometry/MAPS/vst-v02.0-fs.root", qVST));
-        fRun->AddModule(new EicMaps   ("FST", "/home/eic/eicroot/geometry/MAPS/fst-v02.0-ns.root", qFST));
-        fRun->AddModule(new EicMaps   ("BST", "/home/eic/eicroot/geometry/MAPS/bst-v02.0-ns.root", qBST));
-
-        // Beam pipe; details of IR not known yet -> just a cylinder with thin walls;
-        fRun->AddModule(new EicDummyDetector("BEAMPIPE" , "/home/eic/eicroot/geometry/BEAMPIPE/beampipe.root"));
-
-        // Initialize and run the simulation; exit at the end;
-        fRun->Run(1);
-}
-\end{verbnobox}  
-\end{tcolorbox}
+Run the following macro:
 
 \begin{tcolorbox}
 \begin{verbnobox}[\scriptsize]
@@ -385,17 +377,30 @@ Run the following root macro to compile the geometry:
 \end{verbnobox}  
 \end{tcolorbox}
 
-\begin{figure}
+This will open a GUI as shown in Fig.~\ref{fig:visual}.
+
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.5\textwidth]{figures/viewer.png}
 \caption{Event-display GUI.}
 \label{fig:visual}
 \end{figure}
 
+A screenshot of the help menu from the GUI is shown in Appendix~\ref{sec:help_menu}.
+The main commands are listed below:
+
+\begin{itemize}
+\item \verb|j|, \verb|k|: zoom in and out.
+\item \verb|e|: change background color between black and white.
+\item \verb|w|, \verb|r|, \verb|t|: different ways of visualizing the geometry.
+\end{itemize}
+
 % ========================================================================================
 \section{Detector updates (week of July 13-17, 2020)}
 
 \subsection{Beampipe updates}
+
+This is just a placeholder. A more realistic beampipe is needed.
 
 \begin{tcolorbox}
 \begin{verbnobox}[\scriptsize]
@@ -415,11 +420,11 @@ bpipe->AddElement  (pf);
 
 \subsection{Barrel updates}
 
-Below are two possible upgrades for the barrel. Tho innermost layers are identical in these two upgrades,
+Below are two possible updates for the barrel. Tho innermost layers are identical in these two updates,
 and differ from the original configuration in that their radii and number of staves have been increased to accommodate the
 beampipe.
 
-Upgrade 1:
+Update 1:
 
 This version has the two middle and two outer layers configured such that the triangular
 staves are back-to-back. See Fig.~\ref{fig:barrel_upgrades} (center).
@@ -436,7 +441,7 @@ vst->AddBarrelLayer(ibcell, 151, 14*10/4, 419.095, 179.5, 180/151+0.2);
 \end{verbnobox}  
 \end{tcolorbox}
 
-Upgrade 2:
+Update 2:
 
 This version has the two middle and two outer layers configured such that the silicon part of each stave
 faces one another. See Fig.~\ref{fig:barrel_upgrades} (right). This makes the detector more hermetic.
@@ -459,16 +464,55 @@ to reflect the changes in the rest of the geometry.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.3\textwidth]{figures/barrel_upgrades.jpg}
-\caption{Different configurations for the barrel layers: (left) original, (center) upgrade 1, and (right) upgrade 2.}
+\caption{Different configurations for the barrel layers: (left) original, (center) update 1, and (right) update 2.}
 \label{fig:barrel_upgrades}
 \end{figure}
 
-\subsection{Disk updates (Under Construction)}
+\subsection{Disk updates}
 
-In order to avoid these gaps, a ``hack'' was implemented. The mimosa chips were extended in width.
+There were no changes added to the $z$ position or the outer radii of the disks. Basically, only the inner radii were increased to accommodate the new beampipe.
+Also, the spacing between staves was increased for reasons listed in the next paragraph. The modified line is shown below:
 
+\begin{tcolorbox}
+\begin{verbnobox}[\scriptsize]
+FstDisc *disc = new FstDisc(ibcell, 31.5, TMath::Min(432.3, 185.0 * Z[dc] / Z[0]), 18.);
+\end{verbnobox}  
+\end{tcolorbox}
 
+After implementing this, I noticed that a gap appeared between the middle piece and two semi-circles that
+form the disks, as shown in Fig.~\ref{fig:new_disks} (left). I confirmed with Alexander Kiselev that this comes from the fact that
+exactly three staves are hardcoded for the middle part of the disks.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.203\textwidth]{figures/disk_gap.png}
+\includegraphics[width=0.4\textwidth]{figures/updated_disks.png}
+\caption{Updates to disks and support structure: (left) gap that appeared between the middle piece and two semi-circles that
+form the disks after increasing the inner radii. (right) updated disks after increasing Mimosa chip width.}
+\label{fig:new_disks}
+\end{figure}
+
+In order to avoid these gaps, a ``hack'' was implemented. The mimosa chips were extended in width from 15 mm to 25 mm
+so that the extra horizontal area fills these gaps.
+Keep in mind that both the barrel (\verb|vst.C|) and disks (\verb|fbst.C|) read from \verb|maps-lib.C| for the definition of
+the Mimosa chips. However, we only want to change the width of the chips in the disks (not the barrel). To achieve this,
+I modified the dimensions of the chip in a copy of \verb|maps-lib.C|, and made the disks macro read the chips from this copy.
+In this copy, the following two lines were modified:
+
+\begin{tcolorbox}
+\begin{verbnobox}[\scriptsize]
+ibcell->mChipWidth                   =   25.000;  //15.000;
+ibcell->mAssemblyDeadMaterialWidth   =   25.000;  //15.000;
+\end{verbnobox}  
+\end{tcolorbox}
+
+Fig.~\ref{fig:new_disks} (right) shows what one of the disk regions looks like after implementing these fixes.
+
+\subsection{Support structure updates}
+
+Previously, we noticed that the ``forward''-labeled region of the detector had five disks in the forward direction, and the support structure in the backward direction.
+Similarly, the ``backward''-labeled region of the detector had five disks in the backward direction, and the support structure in the forward direction.
+I changed the sign in the support structure such that this is corrected.
 
 
 
@@ -725,6 +769,7 @@ fbst()
 % ========================================================================================
 \pagebreak
 \subsection{Help menu from event display GUI}
+\label{sec:help_menu}
 
 \begin{figure}[H]
 \centering
