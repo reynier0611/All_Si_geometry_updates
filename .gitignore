@@ -2,5 +2,7 @@
 *.aux
 *.log
 *.synctex.gz
+*.out
+*.toc
 figures/.DS_Store
 figures/beampipe.pptx

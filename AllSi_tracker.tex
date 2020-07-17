@@ -9,6 +9,14 @@
 \usepackage{verbatimbox}
 \geometry{margin=2cm}
 
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
 \usepackage{url}
 \usepackage{tcolorbox}
 \usepackage{multirow}
@@ -27,16 +35,18 @@
 
 \maketitle
 
+\tableofcontents
 
 % ========================================================================================
+\newpage
 \section{Accessing EICroot image}
 
 EICroot and necessary dependencies are already installed in a virtual machine.
 Install VMware.
 Double click on the file \verb|vm-eic.vmx|.
 When the image loads, it will ask for a username (eic) and password (eiceic).
-This virtual machine was created with the Beast detector geometry. Thus, two files (\verb|vst.C| and \verb|fbst.C|) need to be updated.
-The updated files are copied at the very end of this document.
+This virtual machine was created with the Beast detector geometry. Thus, two files (\verb|vst.C| and \verb|fbst.C|) need to be updated
+so that the code generates the All-Silicon tracker geometry instead. The original codes I got from Yue Shi Lai are appended at the end of this document.
 
 % ========================================================================================
 \section{Modifying the geometry}
@@ -65,7 +75,7 @@ ip->AddSection( 400.0, 36.00);
 \end{verbnobox}  
 \end{tcolorbox}
 
-Outside of this range, the beampipe becomes Aluminum and extends from where the Beryllium section ends and up until 4.5 m.
+Outside of this range, the beampipe becomes Aluminum and extends from where the Beryllium section ends and up until $\pm$4.5 m.
 it increases in diameter from 36 mm to 40 mm:
 
 \begin{tcolorbox}
@@ -244,6 +254,12 @@ for(unsigned dc=0; dc<_DISK_NUM_; dc++) {
 % ========================================
 \subsection{Support structure}
 
+\color{red}
+Note: EICroot uses millimeters as the standard length unit. All the lengths shown up to this point corresponded to mm.
+However, the support structure is defined directly using Geant classes, which use cm as the standard length unit.
+Thus, the lengths in this section are given in cm.
+\color{black}
+
 The support structure is also defined in:
 
 \begin{tcolorbox}
@@ -327,10 +343,86 @@ Run the following root macro to compile the geometry:
 \end{tcolorbox}
 
 % ========================================================================================
-\section{Barrel updates}
+\section{Visualizing the geometry}
 
-Below are two possible upgrades for the barrel.
+\begin{tcolorbox}
+\begin{verbnobox}[\scriptsize]
+{
+        // Load basic libraries;
+        gROOT->Macro("$VMCWORKDIR/gconfig/rootlogon.C");
 
+        // Create simulation run manager; use GEANT3 for tracking excercises here;
+        EicRunSim *fRun = new EicRunSim("TGeant3");
+        fRun->SetOutputFile("simulation-uds.root");
+
+        // Vertex tracker;
+        fRun->AddModule(new EicMaps   ("VST", "/home/eic/eicroot/geometry/MAPS/vst-v02.0-fs.root", qVST));
+        fRun->AddModule(new EicMaps   ("FST", "/home/eic/eicroot/geometry/MAPS/fst-v02.0-ns.root", qFST));
+        fRun->AddModule(new EicMaps   ("BST", "/home/eic/eicroot/geometry/MAPS/bst-v02.0-ns.root", qBST));
+
+        // Beam pipe; details of IR not known yet -> just a cylinder with thin walls;
+        fRun->AddModule(new EicDummyDetector("BEAMPIPE" , "/home/eic/eicroot/geometry/BEAMPIPE/beampipe.root"));
+
+        // Initialize and run the simulation; exit at the end;
+        fRun->Run(1);
+}
+\end{verbnobox}  
+\end{tcolorbox}
+
+\begin{tcolorbox}
+\begin{verbnobox}[\scriptsize]
+{
+  gROOT->Macro("$VMCWORKDIR/gconfig/rootlogon.C"); // Load basic libraries;
+
+  // Create visualization manager; 
+  EicEventManager *fMan = new EicEventManager();
+  fMan->SetInputFile("simulation-uds.root");
+
+  fMan->Init(); // Initialize and run visualization manager; tune vis.properties a bit;
+
+  fMan->Run();
+}
+\end{verbnobox}  
+\end{tcolorbox}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]{figures/viewer.png}
+\caption{Event-display GUI.}
+\label{fig:visual}
+\end{figure}
+
+% ========================================================================================
+\section{Detector updates (week of July 13-17, 2020)}
+
+\subsection{Beampipe updates}
+
+\begin{tcolorbox}
+\begin{verbnobox}[\scriptsize]
+BeamPipeElement *ip = new BeamPipeElement("beryllium", 0.762);
+ip->AddSection(-798.0, 62.00);
+ip->AddSection( 798.0, 62.00);
+
+BeamPipeElement *pf = new BeamPipeElement("aluminum", 1.000);
+pf->AddSection(  798.0, 62.00);
+pf->AddSection( 4500.0, 62.00);
+
+bpipe->AddElement  (pf,BeamPipeElement::Swap);
+bpipe->AddIpElement(ip);
+bpipe->AddElement  (pf);
+\end{verbnobox}  
+\end{tcolorbox}
+
+\subsection{Barrel updates}
+
+Below are two possible upgrades for the barrel. Tho innermost layers are identical in these two upgrades,
+and differ from the original configuration in that their radii and number of staves have been increased to accommodate the
+beampipe.
+
+Upgrade 1:
+
+This version has the two middle and two outer layers configured such that the triangular
+staves are back-to-back. See Fig.~\ref{fig:barrel_upgrades} (center).
 \begin{tcolorbox}
 \begin{verbnobox}[\scriptsize]
 vst->AddBarrelLayer(ibcell,  17,      10,  32.000,  12.0, 0.0        );
@@ -344,6 +436,10 @@ vst->AddBarrelLayer(ibcell, 151, 14*10/4, 419.095, 179.5, 180/151+0.2);
 \end{verbnobox}  
 \end{tcolorbox}
 
+Upgrade 2:
+
+This version has the two middle and two outer layers configured such that the silicon part of each stave
+faces one another. See Fig.~\ref{fig:barrel_upgrades} (right). This makes the detector more hermetic.
 \begin{tcolorbox}
 \begin{verbnobox}[\scriptsize]
 vst->AddBarrelLayer(ibcell,  17,      10,  32.000,  12.0, 0.0        );
@@ -357,35 +453,79 @@ vst->AddBarrelLayer(ibcell, 151, 14*10/4, 419.095, 179.5, 180/151+0.2);
 \end{verbnobox}  
 \end{tcolorbox}
 
-\begin{figure}
+Additionally, with respect to the original barrel, some of the length of the staves in z has been changed
+to reflect the changes in the rest of the geometry.
+
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.3\textwidth]{figures/barrel_upgrades.jpg}
-\caption{}
+\caption{Different configurations for the barrel layers: (left) original, (center) upgrade 1, and (right) upgrade 2.}
 \label{fig:barrel_upgrades}
 \end{figure}
+
+\subsection{Disk updates (Under Construction)}
+
+In order to avoid these gaps, a ``hack'' was implemented. The mimosa chips were extended in width.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 % ========================================================================================
 \pagebreak
-\section{vst.C}
+\appendix
+\section{Appendices}
+\subsection{Original vst.C macro from Yue Shi Lai}
 
 \begin{tcolorbox}
 \begin{verbnobox}[\tiny]
 #define _VERSION_     1
 #define _SUBVERSION_  0
 
-// Do not want to always overwrite "official" files; place "test" tag into the file name;
-//#define _TEST_VERSION_
+//#define _TEST_VERSION_ // Do not want to always overwrite "official" files; place "test" tag into the file name;
 
-// All construction elements are smeared (so chip assembly is uniform in both 
-// beam line and asimuthal direction); 
+// All construction elements are smeared (so chip assembly is uniform in both beam line and asimuthal direction); 
 //#define _NO_STRUCTURE_GEOMETRY_
 // No tricky elements like inclined roof beams; still water pipes, etc are 
 // created (so chip assembly is uniform in beam line direction only);
 //#define _BEAM_LINE_UNIFORM_GEOMETRY_
 
-// In case of VST no need to fall back to tricky TGeoCompositeShape cell assemblies;
-#define _USE_TRIANGULAR_ASSEMBLIES_
+#define _USE_TRIANGULAR_ASSEMBLIES_ // In case of VST no need to fall back to tricky TGeoCompositeShape cell assemblies;
 
 //#define _WITH_MOUNTING_RINGS_ // Comment out if no mounting rings wanted;
 //#define _WITH_ENFORCEMENT_BRACKETS_ // Comment out if no stave enforcement brackets wanted;
@@ -413,8 +553,7 @@ vst()
   // No offset per default;
   //vst->SetTopVolumeTransformation(new TGeoTranslation(0.0, 0.0, 0.0));
 
-  // NB: all these numbers are sort of arbitrary; allow to get better visual 
-  // representation, but do not reflect any reality of the final design;
+  // NB: all these numbers are sort of arbitrary; allow to get better visual representation, but do not reflect any reality of the final design;
 
   // Mounting ring construction; arbitrary numbers, same for all layers;
   if (vst->WithMountingRings()) {
@@ -474,7 +613,7 @@ vst()
 
 % ========================================================================================
 \pagebreak
-\section{fbst.C}
+\subsection{Original fbst.C file from Yue Shi Lai}
 
 \begin{tcolorbox}
 \begin{verbnobox}[\tiny]
@@ -583,6 +722,16 @@ fbst()
 \end{verbnobox}  
 \end{tcolorbox}
 
+% ========================================================================================
+\pagebreak
+\subsection{Help menu from event display GUI}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/viewer_help.jpg}
+\caption{Event-display GUI help menu.}
+\label{fig:visual_help}
+\end{figure}
 
 %\bibliography{bib_file}
 %\bibliographystyle{ieeetr}
